@@ -4,6 +4,13 @@ async function main() {
   // Deploy the Lock contract
   console.log("Start deployment...");
 
+  const [deployer] = await ethers.getSigners();
+  console.log(`Deploying contracts with the account: ${deployer.address}`);
+
+  const balance = await ethers.provider.getBalance(deployer.address);
+  console.log(`Account balance: ` + balance);
+  // Rest of your deployment code...
+
   // // Prepare deployments args to be passed to the constructor
   // const unlockTime = Math.floor(Date.now() / 1000) + 60*5; // 5 minutes in the future
   // const value_im_locking = ethers.parseEther("10"); // Parsing ETH/XRP value into WEI (1ETH = 10^18wei)
