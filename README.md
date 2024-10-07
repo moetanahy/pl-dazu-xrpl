@@ -1,3 +1,32 @@
+# Dazu - Remittance Proof of Concept for Permissionless Hackathon
+
+## Important
+
+This is a fork of the demo project shared by https://github.com/hazardcookie/Band-Oracle-Foundry-Workshop?tab=readme-ov-file
+
+
+## Installation instructions
+
+1. Clone the repository
+2. Run `npm i` to install the necessary dependencies
+3. Create a `.env` file at the root of the project and add the following line: `DEV_PRIVATE_KEY=your_dev_private_key`.  
+   To obtain this private key, simply export it from your MetaMask wallet.
+3. Compile the project
+  ```
+  npx hardhat compile
+  ```
+4. Test run the project
+  ```
+  npx hardhat test
+  ```
+5. Deploy the contracts
+  ```
+  npx hardhat run scripts/deploy.ts --network XRPL_EVM_Sidechain_Devnet
+  ```
+
+
+-----
+
 # XRPL EVM Sidechain - Getting Started with Hardhat 👷
 
 The goal of this repository is to provide you with all the necessary tools to get started with Hardhat and deploy your first contract on the XRPL EVM sidechain.
