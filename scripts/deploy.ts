@@ -9,7 +9,11 @@ async function main() {
 
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log(`Account balance: ` + balance);
-  // Rest of your deployment code...
+
+  // if (balance.eq(0)) {
+  //   console.error("Insufficient funds in the deployer account.");
+  //   return;
+  // }
 
   const USDz = await ethers.getContractFactory("USDz");
   const USD = await USDz.deploy();
