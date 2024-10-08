@@ -16,8 +16,12 @@ contract ExchangeRateOracle is IExchangeRateOracle {
         exchangeRates[fromIsoCode][toIsoCode] = rate;
     }
 
-    // Implementation of the interface function to fetch the exchange rate
+    // Function to get the exchange rate, returning the scaled value
     function getExchangeRate(string memory fromIsoCode, string memory toIsoCode) public view override returns (uint256) {
+        if (keccak256(abi.encodePacked(fromIsoCode)) == keccak256(abi.encodePacked(toIsoCode))) {
+            return 1 * 1e6; // Return scaled 1 for same currency
+        }
+    
         return exchangeRates[fromIsoCode][toIsoCode];
     }
 }

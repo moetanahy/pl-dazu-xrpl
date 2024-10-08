@@ -22,6 +22,16 @@ async function main() {
   await exchangeRateOracle.waitForDeployment();
   console.log(`ExchangeRateOracle deployed to: ${exchangeRateOracle.target}`);
 
+  // Set exchange rates for USD => EGP and EGP => USD
+  const usdToEgpRate = 48.596381 * 1e6; // Scale by 10^6 to retain 6 decimal places
+  const egpToUsdRate = 0.020577664 * 1e6; // Scale by 10^6 to retain 6 decimal places
+
+  await exchangeRateOracle.setExchangeRate("USD", "EGP", Math.floor(usdToEgpRate)); // Convert to integer
+  console.log("Set exchange rate from USD to EGP.");
+
+  await exchangeRateOracle.setExchangeRate("EGP", "USD", Math.floor(egpToUsdRate)); // Convert to integer
+  console.log("Set exchange rate from EGP to USD.");
+
   // Deploy MultiCurrencyStakingProtocol with the ExchangeRateOracle address
   const MultiCurrencyStakingProtocol = await ethers.getContractFactory("MultiCurrencyStakingProtocol");
   const stakingProtocol = await MultiCurrencyStakingProtocol.deploy(exchangeRateOracle.target);

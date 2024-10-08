@@ -48,23 +48,23 @@ I need a liquidity pool which holds all the tokens
 ## Verify an account
 
 ```
+// This is the example
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet DEPLOYED_CONTRACT_ADDRESS "Constructor argument 1"
 
-// Examples
-npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/currencies/USDz.sol:USDz 0xbEdba960BFA1600C808F40e0FE0Ecf6b8AB1E0A0
-
-npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/currencies/EGPz.sol:EGPz 0x67203bfc0565bDf10a5301f4F704D8Db214FF911
-
+// USDz
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/currencies/USDz.sol:USDz 0x176Ca7D9c64e834F4a106f4209bc23F48c82AE8c
+// EGPz
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/currencies/EGPz.sol:EGPz 0xF4CF871675FB0e179Ac45d58Dd8259974fF06CEA
+// ExchangeRate
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x938247fD9cDe941A237b4917c42e17d8fd6F343f
-
+// Multicurrencystaking
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x24bFda6e5171ca2a0c26c6523C3F8f8c64F5B742  0x938247fD9cDe941A237b4917c42e17d8fd6F343f
 ```
 
 ## Public contract IDs
 
-USDz:                           0xbEdba960BFA1600C808F40e0FE0Ecf6b8AB1E0A0
-EGPz:                           0x67203bfc0565bDf10a5301f4F704D8Db214FF911
-IExchangeRate:                  0x938247fD9cDe941A237b4917c42e17d8fd6F343f
-MultiCurrencyStakingProtocol:   0x24bFda6e5171ca2a0c26c6523C3F8f8c64F5B742
-
+USDz:                           0x176Ca7D9c64e834F4a106f4209bc23F48c82AE8c
+EGPz:                           0xF4CF871675FB0e179Ac45d58Dd8259974fF06CEA
+IExchangeRate:                  0x4D767D782a656e0F303B483Ff312dF9526Ec8A84
+MultiCurrencyStakingProtocol:   0xAa65e5AABA8dFe68a61d11B305F4815178414484
 
