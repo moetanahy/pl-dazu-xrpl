@@ -23,11 +23,20 @@ contract MultiCurrencyStakingProtocol is Ownable {
         FeeTier feeTier;                  // The liquidity provider fee tier for this currency
     }
 
+    // Mapping where the key is an IERC20 token (its contract address)
     mapping(IERC20 => Currency) public currencies;
     mapping(address => mapping(IERC20 => uint256)) public userStakes;
+    
+    // Mapping where the key is an IERC20 token (its contract address)
     mapping(IERC20 => bool) public supportedTokens;
+
+    // Mapping where the key is an ISO code (e.g., "USD") and the value is the corresponding IERC20 token
     mapping(string => IERC20) public isoCodeToToken;
+
+    // Mapping where the key is a token symbol (e.g., "USDz") and the value is the corresponding IERC20 token
     mapping(string => IERC20) public tokenSymbolToToken;
+
+    // Mapping where the key is an address and the value is the corresponding country code
     mapping(address => string) public userCountries;
 
     // Dynamic array of strings to store supported token names or symbols
