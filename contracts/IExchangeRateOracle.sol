@@ -20,7 +20,7 @@ contract ExchangeRateOracle is IExchangeRateOracle {
     // Function to get the exchange rate, returning the scaled value
     function getExchangeRate(string memory fromIsoCode, string memory toIsoCode) public view override returns (uint256) {
         if (keccak256(abi.encodePacked(fromIsoCode)) == keccak256(abi.encodePacked(toIsoCode))) {
-            return 10000; // lways returning to 4 decimal places
+            return 100; // lways returning to 2 decimal places
         }
     
         return exchangeRates[fromIsoCode][toIsoCode];

@@ -110,7 +110,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         require(isTokenSupported(fromToken), "Sender's currency not supported");
         require(isTokenSupported(toToken), "Recipient's currency not supported");
 
-        uint256 transactionFeeAmount = (_amount * currencies[fromToken].transactionFee) / 10000;
+        uint256 transactionFeeAmount = (_amount * currencies[fromToken].transactionFee) / 100; // TODO not sure this is correct
         uint256 amountAfterFee = _amount - transactionFeeAmount;
         require(amountAfterFee > 0, "Amount after fee must be greater than zero");
 
@@ -127,8 +127,8 @@ contract MultiCurrencyStakingProtocol is Ownable {
             // Cross-currency transfer
             uint256 exchangeRate = getExchangeRate(senderCountry, recipientCountry);
 
-            // Adjust for decimals (assuming both tokens have 18 decimals for simplicity)
-            amountReceived = (amountAfterFee * exchangeRate) / (10 ** 18);
+            // Adjust for decimals (assuming both tokens have 2 decimals for simplicity)
+            amountReceived = (amountAfterFee * exchangeRate) / (10 ** 2);
 
             liquidityProviderFeeAmount = calculateLiquidityProviderFee(amountReceived, toToken);
             amountReceived -= liquidityProviderFeeAmount;
@@ -163,7 +163,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
     // Calculate liquidity provider fee based on the currency's tier using a helper function
     function calculateLiquidityProviderFee(uint256 amount, IERC20 toToken) internal view returns (uint256) {
         uint256 feeRate = getLiquidityProviderFeeRate(toToken);
-        return (amount * feeRate) / 10000;
+        return (amount * feeRate) / 100;
     }
 
     // Public function to calculate liquidity provider fee using currency ISO codes
