@@ -12,6 +12,7 @@ contract ExchangeRateOracle is IExchangeRateOracle {
     mapping(string => mapping(string => uint256)) public exchangeRates;
 
     // Function to set an exchange rate between two ISO currencies (e.g., USD => EUR)
+    // we assume we are receiving to 4 decimal places
     function setExchangeRate(string memory fromIsoCode, string memory toIsoCode, uint256 rate) public {
         exchangeRates[fromIsoCode][toIsoCode] = rate;
     }
@@ -19,7 +20,7 @@ contract ExchangeRateOracle is IExchangeRateOracle {
     // Function to get the exchange rate, returning the scaled value
     function getExchangeRate(string memory fromIsoCode, string memory toIsoCode) public view override returns (uint256) {
         if (keccak256(abi.encodePacked(fromIsoCode)) == keccak256(abi.encodePacked(toIsoCode))) {
-            return 1 * 1e6; // Return scaled 1 for same currency
+            return 10000; // lways returning to 4 decimal places
         }
     
         return exchangeRates[fromIsoCode][toIsoCode];
