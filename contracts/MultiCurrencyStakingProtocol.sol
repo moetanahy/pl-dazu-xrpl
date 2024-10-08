@@ -106,13 +106,21 @@ contract MultiCurrencyStakingProtocol is Ownable {
         emit CurrencyAdded(token, _isoCode, tokenSymbol, _feeTier);
     }
 
-    // Function to get the list of supported tokens
     function getSupportedTokens() public view returns (Currency[] memory) {
         Currency[] memory supportedCurrencies = new Currency[](supportedTokensArray.length);
         for (uint256 i = 0; i < supportedTokensArray.length; i++) {
             string memory tokenSymbol = supportedTokensArray[i];
             IERC20 token = tokenSymbolToToken[tokenSymbol];
-            supportedCurrencies[i] = currencies[token];
+            Currency storage currencyData = currencies[token];
+            
+            supportedCurrencies[i] = Currency({
+                isoCode: currencyData.isoCode,
+                tokenSymbol: currencyData.tokenSymbol,
+                totalStaked: currencyData.totalStaked,
+                transactionFee: currencyData.transactionFee,
+                rewardsPool: currencyData.rewardsPool,
+                feeTier: currencyData.feeTier
+            });
         }
         return supportedCurrencies;
     }

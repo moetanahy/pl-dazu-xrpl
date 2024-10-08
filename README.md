@@ -58,7 +58,7 @@ npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/curr
 // ExchangeRate
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0xB2E68bEE129f00E2ce828A0095B7D1BF8c1E4187
 // Multicurrencystaking
-npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0xcEccC2c63131733c09901aa41B714cf2B111B48e  0xC6811933d5fe769cb1068ad1EF483917Dd3400A8
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x7B08Bc47BE19d5F09a2CB3f4A41e55dA095f91F1  0xC6811933d5fe769cb1068ad1EF483917Dd3400A8
 ```
 
 ## Public contract IDs
