@@ -4,6 +4,8 @@
 
 This is a fork of the demo project shared by https://github.com/hazardcookie/Band-Oracle-Foundry-Workshop?tab=readme-ov-file
 
+Also check docs here - https://github.com/maximedgr/xrpl-evm-quickstart-hardhat
+
 
 ## Installation instructions
 
@@ -49,8 +51,10 @@ I need a liquidity pool which holds all the tokens
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet DEPLOYED_CONTRACT_ADDRESS "Constructor argument 1"
 
 // Examples
-npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0xbEdba960BFA1600C808F40e0FE0Ecf6b8AB1E0A0  "USDz"
-npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x67203bfc0565bDf10a5301f4F704D8Db214FF911  "EGPz"
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/currencies/USDz.sol:USDz 0xbEdba960BFA1600C808F40e0FE0Ecf6b8AB1E0A0
+
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet --contract contracts/currencies/EGPz.sol:EGPz 0x67203bfc0565bDf10a5301f4F704D8Db214FF911
+
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x938247fD9cDe941A237b4917c42e17d8fd6F343f
 
 npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x24bFda6e5171ca2a0c26c6523C3F8f8c64F5B742  0x938247fD9cDe941A237b4917c42e17d8fd6F343f
