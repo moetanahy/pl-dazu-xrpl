@@ -42,3 +42,17 @@ We can split the users into:
 
 I need a liquidity pool which holds all the tokens
 
+
+## Verify an account
+
+```
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet DEPLOYED_CONTRACT_ADDRESS "Constructor argument 1"
+
+// Examples
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0xbEdba960BFA1600C808F40e0FE0Ecf6b8AB1E0A0  "USDz"
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x67203bfc0565bDf10a5301f4F704D8Db214FF911  "EGPz"
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x938247fD9cDe941A237b4917c42e17d8fd6F343f
+
+npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x24bFda6e5171ca2a0c26c6523C3F8f8c64F5B742  0x938247fD9cDe941A237b4917c42e17d8fd6F343f
+```
+

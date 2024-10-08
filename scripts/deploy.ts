@@ -45,7 +45,7 @@ async function main() {
   const addUSDCurrencyTx = await stakingProtocol.addCurrency(
     usdToken.target,        // Address of the USDz token
     "USD",                  // ISO currency code
-    100,                    // Transaction fee in basis points (1%)
+    10,                    // Transaction fee in basis points (1%)
     0                       // FeeTier.Tier1 (0.25%)
   );
   await addUSDCurrencyTx.wait();
@@ -55,7 +55,7 @@ async function main() {
   const addEGPCurrencyTx = await stakingProtocol.addCurrency(
     egpToken.target,        // Address of the EGPz token
     "EGP",                  // ISO currency code
-    100,                    // Transaction fee in basis points (1%)
+    10,                    // Transaction fee in basis points (1%)
     1                       // FeeTier.Tier2 (0.5%)
   );
   await addEGPCurrencyTx.wait();
