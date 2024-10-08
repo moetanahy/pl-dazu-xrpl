@@ -66,5 +66,5 @@ npx hardhat verify --network XRPL_EVM_Sidechain_Devnet 0x089e59013729496B9Bb3A15
 USDz:                           0x6EAA1BE9CC407310Db30A7466cC66507eA52d873
 EGPz:                           0x059677BDd3C989097D3DF389D5693Ea963855eAc
 IExchangeRate:                  0xE365072c67e9E7C0679CF63C24A18E61eFc2Aea1
-MultiCurrencyStakingProtocol:   0xa64Cb032fdf586E396AC3FbC7d7828DdeF2554bf
+MultiCurrencyStakingProtocol:   0x089e59013729496B9Bb3A15C1207FdffC2cB90C1
 
