@@ -23,8 +23,8 @@ async function main() {
   console.log(`ExchangeRateOracle deployed to: ${exchangeRateOracle.target}`);
 
   // Set exchange rates for USD => EGP and EGP => USD
-  const usdToEgpRate = 485963; // We are sending values as 4 decimal places
-  const egpToUsdRate = 205; // We are sending values as 4 decimal places
+  const usdToEgpRate = 4859; // We are sending values as 4 decimal places
+  const egpToUsdRate = 2; // We are sending values as 4 decimal places
 
   await exchangeRateOracle.setExchangeRate("USD", "EGP", Math.floor(usdToEgpRate)); // Convert to integer
   console.log("Set exchange rate from USD to EGP.");
