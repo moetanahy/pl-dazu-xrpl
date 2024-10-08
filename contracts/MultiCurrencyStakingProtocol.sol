@@ -1,33 +1,49 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"; // For token metadata
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";           // For safe token transfers
+import "@openzeppelin/contracts/access/Ownable.sol";                         // For access control
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol"; // For oracle integration
 
 contract MultiCurrencyStakingProtocol is Ownable {
-    using SafeERC20 for IERC20;  // Enable safe handling of ERC20 tokens
+    using SafeERC20 for IERC20;
 
     struct Currency {
-        uint256 totalStaked;    // Total staked in the protocol for this currency
-        uint256 transactionFee; // Transaction fee in basis points (e.g., 100 = 1%)
-        uint256 utilizationFee; // Utilization fee in basis points (if applicable)
-        uint256 rewardsPool;    // Total rewards pool for the currency
+        string isoCode;                   // ISO currency code (e.g., "USD", "EUR")
+        string tokenSymbol;               // Token symbol (e.g., "USDz")
+        uint256 totalStaked;              // Total staked in the protocol for this currency
+        uint256 transactionFee;           // Transaction fee in basis points (e.g., 100 = 1%)
+        uint256 rewardsPool;              // Total rewards pool for the currency
+        AggregatorV3Interface priceFeed;  // Chainlink Price Feed for the currency
     }
 
     mapping(IERC20 => Currency) public currencies;
     mapping(address => mapping(IERC20 => uint256)) public userStakes;
-    mapping(IERC20 => bool) public supportedTokens; // Track supported tokens
+    mapping(IERC20 => bool) public supportedTokens;
+    mapping(string => IERC20) public isoCodeToToken;
+    mapping(address => string) public userCountries;
 
+    event CurrencyAdded(IERC20 token, string isoCode, string tokenSymbol);
+    event UserCountrySet(address indexed user, string countryCode);
     event Stake(address indexed user, IERC20 token, uint256 amount);
     event Unstake(address indexed user, IERC20 token, uint256 amount, uint256 rewards);
-    event TransferWithFee(address indexed from, address indexed to, IERC20 token, uint256 amountSent, uint256 fee);
+    event Transfer(
+        address indexed from,
+        address indexed to,
+        IERC20 fromToken,
+        IERC20 toToken,
+        uint256 amountSent,
+        uint256 amountReceived,
+        uint256 transactionFee,
+        uint256 liquidityProviderFee
+    );
     event TransactionFeeCollected(IERC20 token, uint256 amount);
     event RewardsClaimed(address indexed user, IERC20 token, uint256 rewards);
 
     constructor() {}
 
-    // Function to check if a token is supported
+    // Check if a token is supported
     function isTokenSupported(IERC20 token) public view returns (bool) {
         return supportedTokens[token];
     }
@@ -39,22 +55,47 @@ contract MultiCurrencyStakingProtocol is Ownable {
     }
 
     // Add a new currency to the protocol
-    function addCurrency(IERC20 token, uint256 _transactionFee) external onlyOwner {
+    function addCurrency(
+        IERC20 token,
+        string memory _isoCode,
+        uint256 _transactionFee,
+        address _priceFeed
+    ) external onlyOwner {
         require(!supportedTokens[token], "Token already supported");
+        require(bytes(_isoCode).length == 3, "ISO code must be 3 characters");
+        require(isoCodeToToken[_isoCode] == IERC20(address(0)), "ISO code already used");
+        require(_priceFeed != address(0), "Invalid price feed address");
+
+        string memory tokenSymbol = IERC20Metadata(address(token)).symbol();
+        require(bytes(tokenSymbol).length > 0, "Token symbol cannot be empty");
+
         supportedTokens[token] = true;
         currencies[token] = Currency({
+            isoCode: _isoCode,
+            tokenSymbol: tokenSymbol,
             totalStaked: 0,
             transactionFee: _transactionFee,
-            utilizationFee: 0,  // Set to zero if not used
-            rewardsPool: 0
+            rewardsPool: 0,
+            priceFeed: AggregatorV3Interface(_priceFeed)
         });
+
+        isoCodeToToken[_isoCode] = token;
+
+        emit CurrencyAdded(token, _isoCode, tokenSymbol);
     }
 
-    // Stake tokens into the protocol
+    // Set user's country code
+    function setUserCountry(address user, string memory countryCode) external onlyOwner {
+        require(bytes(countryCode).length == 2, "Country code must be 2 characters");
+        userCountries[user] = countryCode;
+
+        emit UserCountrySet(user, countryCode);
+    }
+
+    // Stake tokens (users can stake any currency)
     function stake(IERC20 token, uint256 _amount) external isSupportedToken(token) {
         require(_amount > 0, "Stake amount must be greater than zero");
 
-        // Transfer tokens from the user to the contract
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         userStakes[msg.sender][token] += _amount;
@@ -63,7 +104,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         emit Stake(msg.sender, token, _amount);
     }
 
-    // Unstake tokens and claim rewards from the protocol
+    // Unstake tokens and claim rewards
     function unstake(IERC20 token, uint256 _amount) external isSupportedToken(token) {
         require(userStakes[msg.sender][token] >= _amount, "Insufficient staked balance");
 
@@ -71,36 +112,115 @@ contract MultiCurrencyStakingProtocol is Ownable {
 
         userStakes[msg.sender][token] -= _amount;
         currencies[token].totalStaked -= _amount;
-
-        // Deduct the rewards from the rewards pool
         currencies[token].rewardsPool -= rewards;
 
-        // Transfer tokens back to the user
         token.safeTransfer(msg.sender, _amount + rewards);
 
         emit Unstake(msg.sender, token, _amount, rewards);
     }
 
-    // Users can transfer tokens with a fee
-    function transferWithFee(IERC20 token, address recipient, uint256 _amount) external isSupportedToken(token) {
+    // Transfer function handling both same-currency and cross-currency transfers
+    function transfer(address recipient, uint256 _amount) external {
         require(recipient != address(0), "Recipient cannot be zero address");
         require(_amount > 0, "Transfer amount must be greater than zero");
 
-        // Calculate the transaction fee
-        uint256 transactionFeeAmount = (_amount * currencies[token].transactionFee) / 10000;
-        uint256 amountAfterFee = _amount - transactionFeeAmount;
+        // Get sender's and recipient's country codes
+        string memory senderCountry = userCountries[msg.sender];
+        string memory recipientCountry = userCountries[recipient];
+        require(bytes(senderCountry).length > 0, "Sender country not set");
+        require(bytes(recipientCountry).length > 0, "Recipient country not set");
 
+        // Get tokens corresponding to sender's and recipient's countries
+        IERC20 fromToken = isoCodeToToken[senderCountry];
+        IERC20 toToken = isoCodeToToken[recipientCountry];
+
+        require(isSupportedToken(fromToken), "Sender's currency not supported");
+        require(isSupportedToken(toToken), "Recipient's currency not supported");
+
+        uint256 transactionFeeAmount = (_amount * currencies[fromToken].transactionFee) / 10000;
+        uint256 amountAfterFee = _amount - transactionFeeAmount;
         require(amountAfterFee > 0, "Amount after fee must be greater than zero");
 
-        // Transfer the amount after fee to the recipient
-        token.safeTransferFrom(msg.sender, recipient, amountAfterFee);
+        uint256 liquidityProviderFeeAmount = 0;
+        uint256 amountReceived = amountAfterFee;
 
-        // Transfer the fee to the protocol (rewards pool)
-        token.safeTransferFrom(msg.sender, address(this), transactionFeeAmount);
-        currencies[token].rewardsPool += transactionFeeAmount;
+        if (fromToken == toToken) {
+            // Same-currency transfer
+            // Transfer amount after fee from sender to recipient
+            fromToken.safeTransferFrom(msg.sender, recipient, amountAfterFee);
 
-        emit TransferWithFee(msg.sender, recipient, token, amountAfterFee, transactionFeeAmount);
-        emit TransactionFeeCollected(token, transactionFeeAmount);
+            // Add transaction fee to rewards pool
+            currencies[fromToken].rewardsPool += transactionFeeAmount;
+
+            emit TransactionFeeCollected(fromToken, transactionFeeAmount);
+        } else {
+            // Cross-currency transfer
+            // Fetch exchange rates
+            uint256 fromTokenRate = getLatestPrice(currencies[fromToken].priceFeed);
+            uint256 toTokenRate = getLatestPrice(currencies[toToken].priceFeed);
+
+            // Adjust for decimals
+            uint8 fromTokenDecimals = IERC20Metadata(address(fromToken)).decimals();
+            uint8 toTokenDecimals = IERC20Metadata(address(toToken)).decimals();
+
+            // Calculate amount in recipient's currency
+            amountReceived = (amountAfterFee * fromTokenRate * (10 ** toTokenDecimals)) / (toTokenRate * (10 ** fromTokenDecimals));
+
+            // Liquidity provider fee calculation based on liquidity available
+            liquidityProviderFeeAmount = calculateLiquidityProviderFee(amountReceived, toToken);
+            amountReceived -= liquidityProviderFeeAmount;
+
+            require(amountReceived > 0, "Amount after liquidity fee must be greater than zero");
+
+            // Transfer amount from sender to protocol
+            fromToken.safeTransferFrom(msg.sender, address(this), _amount);
+
+            // Add transaction fee to sender's rewards pool
+            currencies[fromToken].rewardsPool += transactionFeeAmount;
+
+            // Add liquidity provider fee to recipient's rewards pool
+            currencies[toToken].rewardsPool += liquidityProviderFeeAmount;
+
+            // Transfer converted amount to recipient
+            toToken.safeTransfer(recipient, amountReceived);
+
+            emit TransactionFeeCollected(fromToken, transactionFeeAmount);
+        }
+
+        emit Transfer(
+            msg.sender,
+            recipient,
+            fromToken,
+            toToken,
+            _amount,
+            amountReceived,
+            transactionFeeAmount,
+            liquidityProviderFeeAmount
+        );
+    }
+
+    // Calculate liquidity provider fee based on liquidity available
+    function calculateLiquidityProviderFee(uint256 amount, IERC20 toToken) internal view returns (uint256) {
+        // For simplicity, use a fixed liquidity provider fee rate based on liquidity
+        // In a real implementation, this should be dynamic based on actual liquidity
+        uint256 liquidityProviderFeeRate = getLiquidityProviderFeeRate(toToken);
+        return (amount * liquidityProviderFeeRate) / 10000;
+    }
+
+    // Get liquidity provider fee rate based on liquidity
+    function getLiquidityProviderFeeRate(IERC20 toToken) internal view returns (uint256) {
+        // Implement logic to determine fee rate based on liquidity
+        // For example, if liquidity is low, fee rate could be higher
+        // For simplicity, we return a fixed rate of 50 basis points (0.5%)
+        return 50; // 0.5%
+    }
+
+    // Get latest price from Chainlink oracle
+    function getLatestPrice(AggregatorV3Interface priceFeed) public view returns (uint256) {
+        (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
+        require(price > 0, "Invalid price");
+        require(block.timestamp - updatedAt <= 3600, "Stale price data"); // 1 hour
+        return uint256(price);
     }
 
     // Claim accumulated rewards without unstaking
@@ -108,16 +228,13 @@ contract MultiCurrencyStakingProtocol is Ownable {
         uint256 rewards = calculateRewards(msg.sender, token);
         require(rewards > 0, "No rewards to claim");
 
-        // Update the user's stake (rewards are not added to the stake in this case)
         currencies[token].rewardsPool -= rewards;
-
-        // Transfer rewards to the user
         token.safeTransfer(msg.sender, rewards);
 
         emit RewardsClaimed(msg.sender, token, rewards);
     }
 
-    // Calculate rewards for a user (proportional to their stake)
+    // Calculate rewards for a user
     function calculateRewards(address _user, IERC20 token) public view isSupportedToken(token) returns (uint256) {
         uint256 userStake = userStakes[_user][token];
         uint256 totalStaked = currencies[token].totalStaked;
