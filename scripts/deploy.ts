@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, run } from "hardhat";
 
 async function main() {
   // Deploy the Lock contract
@@ -74,6 +74,13 @@ async function main() {
 
   // const StakingPool = await ethers.getContractFactory("StakingPool");
   // const StakingPool = await StakingPool.deploy();
+
+  // Verify the MultiCurrencyStakingProtocol contract
+  await run("verify:verify", {
+    address: stakingProtocol.target,
+    constructorArguments: [exchangeRateOracle.target],
+  });
+  console.log("MultiCurrencyStakingProtocol contract verified");
 
   console.log("Deployment completed...");
 }
