@@ -34,6 +34,10 @@ I have created 4 different accounts so I can properly manage the use-case and te
 * PL_EG_User - this is a user in Egypt who wants to send EGP abroad or receive EGP in Egypt
 * PL_EG_LP - This is a liquidity pool in the US.
 
+We can split the users into:
+* Stakers
+* Transactors
+
 ## Liqudiity Pools
 
 I need a liquidity pool which holds all the tokens

@@ -18,6 +18,9 @@ async function main() {
   const USDz = await ethers.getContractFactory("USDz");
   const USD = await USDz.deploy();
 
+  // const StakingPool = await ethers.getContractFactory("StakingPool");
+  // const StakingPool = await StakingPool.deploy();
+
   console.log("Deployment completed...");
 }
 
