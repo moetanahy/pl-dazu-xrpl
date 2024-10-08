@@ -166,6 +166,19 @@ contract MultiCurrencyStakingProtocol is Ownable {
         return (amount * feeRate) / 10000;
     }
 
+    // Public function to calculate liquidity provider fee using currency ISO codes
+    function calculateLiquidityProviderFeePublic(uint256 amount, string memory toCurrencyISO) public view returns (uint256) {
+        IERC20 toToken = getTokenFromISO(toCurrencyISO);
+        return calculateLiquidityProviderFee(amount, toToken);
+    }
+
+    // Helper function to get token from ISO code
+    function getTokenFromISO(string memory currencyISO) internal view returns (IERC20) {
+        IERC20 token = isoCodeToToken[currencyISO];
+        require(address(token) != address(0), "Currency not supported");
+        return token;
+    }
+
     // Get liquidity provider fee rate based on the currency's fee tier
     function getLiquidityProviderFeeRate(IERC20 toToken) internal view returns (uint256) {
         FeeTier tier = currencies[toToken].feeTier;
