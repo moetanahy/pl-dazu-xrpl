@@ -163,7 +163,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
     // Calculate liquidity provider fee based on the currency's tier using a helper function
     function calculateLiquidityProviderFee(uint256 amount, IERC20 toToken) internal view returns (uint256) {
         uint256 feeRate = getLiquidityProviderFeeRate(toToken);
-        return (amount * feeRate) / 100;
+        return (amount * feeRate) / 10000;
     }
 
     // Public function to calculate liquidity provider fee using currency ISO codes
