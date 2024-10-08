@@ -43,7 +43,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
 
     constructor() {}
 
-    // Check if a token is supported
+    // Function to check if a token is supported
     function isTokenSupported(IERC20 token) public view returns (bool) {
         return supportedTokens[token];
     }
@@ -84,7 +84,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         emit CurrencyAdded(token, _isoCode, tokenSymbol);
     }
 
-    // Set user's country code
+    // Function to set the user's country code (only callable by owner or authorized KYC officer)
     function setUserCountry(address user, string memory countryCode) external onlyOwner {
         require(bytes(countryCode).length == 2, "Country code must be 2 characters");
         userCountries[user] = countryCode;
@@ -92,10 +92,11 @@ contract MultiCurrencyStakingProtocol is Ownable {
         emit UserCountrySet(user, countryCode);
     }
 
-    // Stake tokens (users can stake any currency)
+    // Stake tokens into the protocol (stakers can stake any currency)
     function stake(IERC20 token, uint256 _amount) external isSupportedToken(token) {
         require(_amount > 0, "Stake amount must be greater than zero");
 
+        // Transfer tokens from the user to the contract
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         userStakes[msg.sender][token] += _amount;
@@ -104,7 +105,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         emit Stake(msg.sender, token, _amount);
     }
 
-    // Unstake tokens and claim rewards
+    // Unstake tokens and claim rewards from the protocol
     function unstake(IERC20 token, uint256 _amount) external isSupportedToken(token) {
         require(userStakes[msg.sender][token] >= _amount, "Insufficient staked balance");
 
@@ -114,6 +115,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         currencies[token].totalStaked -= _amount;
         currencies[token].rewardsPool -= rewards;
 
+        // Transfer tokens back to the user
         token.safeTransfer(msg.sender, _amount + rewards);
 
         emit Unstake(msg.sender, token, _amount, rewards);
@@ -134,8 +136,8 @@ contract MultiCurrencyStakingProtocol is Ownable {
         IERC20 fromToken = isoCodeToToken[senderCountry];
         IERC20 toToken = isoCodeToToken[recipientCountry];
 
-        require(isSupportedToken(fromToken), "Sender's currency not supported");
-        require(isSupportedToken(toToken), "Recipient's currency not supported");
+        require(isTokenSupported(fromToken), "Sender's currency not supported");
+        require(isTokenSupported(toToken), "Recipient's currency not supported");
 
         uint256 transactionFeeAmount = (_amount * currencies[fromToken].transactionFee) / 10000;
         uint256 amountAfterFee = _amount - transactionFeeAmount;
@@ -199,23 +201,109 @@ contract MultiCurrencyStakingProtocol is Ownable {
         );
     }
 
-    // Calculate liquidity provider fee based on liquidity available
+    // Function to get transfer details without executing the transfer
+    function getTransferDetails(address sender, string memory recipientIsoCode, uint256 _amount)
+        external
+        view
+        returns (
+            bool success,
+            string memory errorMessage,
+            uint256 transactionFeeAmount,
+            uint256 exchangeRate,
+            uint256 liquidityProviderFeeAmount,
+            uint256 amountReceived
+        )
+    {
+        if (_amount == 0) {
+            return (false, "Amount must be greater than zero", 0, 0, 0, 0);
+        }
+
+        // Get sender's country code
+        string memory senderCountry = userCountries[sender];
+        if (bytes(senderCountry).length == 0) {
+            return (false, "Sender country not set", 0, 0, 0, 0);
+        }
+
+        // Get tokens corresponding to sender's and recipient's countries
+        IERC20 fromToken = isoCodeToToken[senderCountry];
+        IERC20 toToken = isoCodeToToken[recipientIsoCode];
+
+        if (!isTokenSupported(fromToken)) {
+            return (false, "Sender's currency not supported", 0, 0, 0, 0);
+        }
+        if (!isTokenSupported(toToken)) {
+            return (false, "Recipient's currency not supported", 0, 0, 0, 0);
+        }
+
+        transactionFeeAmount = (_amount * currencies[fromToken].transactionFee) / 10000;
+        uint256 amountAfterFee = _amount - transactionFeeAmount;
+        if (amountAfterFee == 0) {
+            return (false, "Amount after transaction fee is zero", 0, 0, 0, 0);
+        }
+
+        liquidityProviderFeeAmount = 0;
+        amountReceived = amountAfterFee;
+        exchangeRate = 0; // Initialize exchange rate
+
+        if (fromToken == toToken) {
+            // Same-currency transfer
+            // No liquidity provider fee
+            exchangeRate = 1 * (10 ** 18); // 1:1 exchange rate represented with 18 decimals
+        } else {
+            // Cross-currency transfer
+            // Fetch exchange rates
+            uint256 fromTokenRate = getLatestPrice(currencies[fromToken].priceFeed);
+            uint256 toTokenRate = getLatestPrice(currencies[toToken].priceFeed);
+
+            // Adjust for decimals
+            uint8 fromTokenDecimals = IERC20Metadata(address(fromToken)).decimals();
+            uint8 toTokenDecimals = IERC20Metadata(address(toToken)).decimals();
+
+            // Calculate exchange rate (scaled to 18 decimals)
+            exchangeRate = (fromTokenRate * (10 ** (18 + toTokenDecimals - fromTokenDecimals))) / toTokenRate;
+
+            // Calculate amount in recipient's currency
+            amountReceived = (amountAfterFee * exchangeRate) / (10 ** 18);
+
+            // Liquidity provider fee calculation
+            liquidityProviderFeeAmount = calculateLiquidityProviderFee(amountReceived, toToken);
+            amountReceived -= liquidityProviderFeeAmount;
+
+            if (amountReceived == 0) {
+                return (
+                    false,
+                    "Amount after liquidity provider fee is zero",
+                    transactionFeeAmount,
+                    exchangeRate,
+                    liquidityProviderFeeAmount,
+                    amountReceived
+                );
+            }
+        }
+
+        return (
+            true,
+            "",
+            transactionFeeAmount,
+            exchangeRate,
+            liquidityProviderFeeAmount,
+            amountReceived
+        );
+    }
+
+    // Helper function to calculate liquidity provider fee
     function calculateLiquidityProviderFee(uint256 amount, IERC20 toToken) internal view returns (uint256) {
-        // For simplicity, use a fixed liquidity provider fee rate based on liquidity
-        // In a real implementation, this should be dynamic based on actual liquidity
         uint256 liquidityProviderFeeRate = getLiquidityProviderFeeRate(toToken);
         return (amount * liquidityProviderFeeRate) / 10000;
     }
 
-    // Get liquidity provider fee rate based on liquidity
+    // Helper function to get liquidity provider fee rate
     function getLiquidityProviderFeeRate(IERC20 toToken) internal view returns (uint256) {
-        // Implement logic to determine fee rate based on liquidity
-        // For example, if liquidity is low, fee rate could be higher
-        // For simplicity, we return a fixed rate of 50 basis points (0.5%)
+        // For simplicity, returning a fixed rate
         return 50; // 0.5%
     }
 
-    // Get latest price from Chainlink oracle
+    // Function to get the latest price from Chainlink oracle
     function getLatestPrice(AggregatorV3Interface priceFeed) public view returns (uint256) {
         (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price");

@@ -15,8 +15,19 @@ async function main() {
   //   return;
   // }
 
+  // Deploy the USDz contract (Assuming USDz is an ERC20 token)
   const USDz = await ethers.getContractFactory("USDz");
-  const USD = await USDz.deploy();
+  const usdToken = await USDz.deploy();
+  await usdToken.waitForDeployment(); // Updated method
+  // await usdToken.deployed();
+  console.log(`USDz deployed to: ${usdToken.target}`);
+
+  // Deploy the MultiCurrencyStakingProtocol contract
+  const MultiCurrencyStakingProtocol = await ethers.getContractFactory("MultiCurrencyStakingProtocol");
+  const stakingProtocol = await MultiCurrencyStakingProtocol.deploy();
+  await stakingProtocol.waitForDeployment(); // Updated method
+  // await stakingProtocol.deployed();
+  console.log(`MultiCurrencyStakingProtocol deployed to: ${stakingProtocol.target}`);
 
   // const StakingPool = await ethers.getContractFactory("StakingPool");
   // const StakingPool = await StakingPool.deploy();
