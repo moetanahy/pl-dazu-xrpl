@@ -3,12 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./IExchangeRateOracle.sol"; // Import the interface
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol"; // For token metadata
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";           // For safe token transfers
-import "@openzeppelin/contracts/access/Ownable.sol";                         // For access control
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MultiCurrencyStakingProtocol is Ownable {
     using SafeERC20 for IERC20;
+
+    // Enum for fee tiers
+    enum FeeTier { Tier1, Tier2, Tier3 }
 
     struct Currency {
         string isoCode;                   // ISO currency code (e.g., "USD", "EUR")
@@ -16,6 +19,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         uint256 totalStaked;              // Total staked in the protocol for this currency
         uint256 transactionFee;           // Transaction fee in basis points (e.g., 100 = 1%)
         uint256 rewardsPool;              // Total rewards pool for the currency
+        FeeTier feeTier;                  // The liquidity provider fee tier for this currency
     }
 
     mapping(IERC20 => Currency) public currencies;
@@ -24,9 +28,10 @@ contract MultiCurrencyStakingProtocol is Ownable {
     mapping(string => IERC20) public isoCodeToToken;
     mapping(address => string) public userCountries;
 
-    IExchangeRateOracle public exchangeRateOracle;  // Oracle to fetch exchange rates
+    IExchangeRateOracle public exchangeRateOracle;
 
-    event CurrencyAdded(IERC20 token, string isoCode, string tokenSymbol);
+    // Events
+    event CurrencyAdded(IERC20 token, string isoCode, string tokenSymbol, FeeTier feeTier);
     event UserCountrySet(address indexed user, string countryCode);
     event Stake(address indexed user, IERC20 token, uint256 amount);
     event Unstake(address indexed user, IERC20 token, uint256 amount, uint256 rewards);
@@ -58,8 +63,8 @@ contract MultiCurrencyStakingProtocol is Ownable {
         _;
     }
 
-    // Add a new currency to the protocol without requiring a price feed
-    function addCurrency(IERC20 token, string memory _isoCode, uint256 _transactionFee) external onlyOwner {
+    // Add a new currency with its fee tier
+    function addCurrency(IERC20 token, string memory _isoCode, uint256 _transactionFee, FeeTier _feeTier) external onlyOwner {
         require(!supportedTokens[token], "Token already supported");
         require(bytes(_isoCode).length == 3, "ISO code must be 3 characters");
         require(isoCodeToToken[_isoCode] == IERC20(address(0)), "ISO code already used");
@@ -73,17 +78,17 @@ contract MultiCurrencyStakingProtocol is Ownable {
             tokenSymbol: tokenSymbol,
             totalStaked: 0,
             transactionFee: _transactionFee,
-            rewardsPool: 0
+            rewardsPool: 0,
+            feeTier: _feeTier
         });
 
         isoCodeToToken[_isoCode] = token;
 
-        emit CurrencyAdded(token, _isoCode, tokenSymbol);
+        emit CurrencyAdded(token, _isoCode, tokenSymbol, _feeTier);
     }
 
     // Function to get exchange rate between two currencies
     function getExchangeRate(string memory fromIsoCode, string memory toIsoCode) public view returns (uint256) {
-        // Fetch the exchange rate from the oracle
         return exchangeRateOracle.getExchangeRate(fromIsoCode, toIsoCode);
     }
 
@@ -155,16 +160,23 @@ contract MultiCurrencyStakingProtocol is Ownable {
         );
     }
 
-    // Calculate liquidity provider fee based on liquidity available
+    // Calculate liquidity provider fee based on the currency's tier using a helper function
     function calculateLiquidityProviderFee(uint256 amount, IERC20 toToken) internal view returns (uint256) {
-        uint256 liquidityProviderFeeRate = getLiquidityProviderFeeRate(toToken);
-        return (amount * liquidityProviderFeeRate) / 10000;
+        uint256 feeRate = getLiquidityProviderFeeRate(toToken);
+        return (amount * feeRate) / 10000;
     }
 
-    // Get liquidity provider fee rate based on liquidity
+    // Get liquidity provider fee rate based on the currency's fee tier
     function getLiquidityProviderFeeRate(IERC20 toToken) internal view returns (uint256) {
-        // Return a fixed liquidity provider fee rate for simplicity (can be dynamic)
-        return 50; // 0.5%
+        FeeTier tier = currencies[toToken].feeTier;
+
+        if (tier == FeeTier.Tier1) {
+            return 25; // 0.25%
+        } else if (tier == FeeTier.Tier2) {
+            return 50; // 0.5%
+        } else {
+            return 100; // 1%
+        }
     }
 
     // Claim rewards without unstaking
