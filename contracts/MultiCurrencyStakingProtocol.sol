@@ -16,6 +16,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
     struct Currency {
         string isoCode;                   // ISO currency code (e.g., "USD", "EUR")
         string tokenSymbol;               // Token symbol (e.g., "USDz")
+        // address tokenAddress;             // ERC20 token address
         uint256 totalStaked;              // Total staked in the protocol for this currency
         uint256 transactionFee;           // Transaction fee in basis points (e.g., 100 = 1%)
         uint256 rewardsPool;              // Total rewards pool for the currency
@@ -26,7 +27,11 @@ contract MultiCurrencyStakingProtocol is Ownable {
     mapping(address => mapping(IERC20 => uint256)) public userStakes;
     mapping(IERC20 => bool) public supportedTokens;
     mapping(string => IERC20) public isoCodeToToken;
+    mapping(string => IERC20) public tokenSymbolToToken;
     mapping(address => string) public userCountries;
+
+    // Dynamic array of strings to store supported token names or symbols
+    string[] public supportedTokensArray;
 
     IExchangeRateOracle public exchangeRateOracle;
 
@@ -69,6 +74,8 @@ contract MultiCurrencyStakingProtocol is Ownable {
         require(bytes(_isoCode).length == 3, "ISO code must be 3 characters");
         require(isoCodeToToken[_isoCode] == IERC20(address(0)), "ISO code already used");
 
+        // IERC20Metadata(address(token)).symbol() // return me the symbil, use that as the key
+
         string memory tokenSymbol = IERC20Metadata(address(token)).symbol();
         require(bytes(tokenSymbol).length > 0, "Token symbol cannot be empty");
 
@@ -83,8 +90,22 @@ contract MultiCurrencyStakingProtocol is Ownable {
         });
 
         isoCodeToToken[_isoCode] = token;
+        tokenSymbolToToken[tokenSymbol] = token;
+
+        supportedTokensArray.push(tokenSymbol);
 
         emit CurrencyAdded(token, _isoCode, tokenSymbol, _feeTier);
+    }
+
+    // Function to get the list of supported tokens
+    function getSupportedTokens() public view returns (Currency[] memory) {
+        Currency[] memory supportedCurrencies = new Currency[](supportedTokensArray.length);
+        for (uint256 i = 0; i < supportedTokensArray.length; i++) {
+            string memory tokenSymbol = supportedTokensArray[i];
+            IERC20 token = tokenSymbolToToken[tokenSymbol];
+            supportedCurrencies[i] = currencies[token];
+        }
+        return supportedCurrencies;
     }
 
     // Function to get exchange rate between two currencies
