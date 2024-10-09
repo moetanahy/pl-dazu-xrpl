@@ -16,7 +16,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
     struct Currency {
         string isoCode;                   // ISO currency code (e.g., "USD", "EUR")
         string tokenSymbol;               // Token symbol (e.g., "USDz")
-        // address tokenAddress;             // ERC20 token address
+        address tokenAddress;             // ERC20 token address
         uint256 totalStaked;              // Total staked in the protocol for this currency
         uint256 transactionFee;           // Transaction fee in basis points (e.g., 100 = 1%)
         uint256 rewardsPool;              // Total rewards pool for the currency
@@ -92,6 +92,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
         currencies[token] = Currency({
             isoCode: _isoCode,
             tokenSymbol: tokenSymbol,
+            tokenAddress: address(token),
             totalStaked: 0,
             transactionFee: _transactionFee,
             rewardsPool: 0,
@@ -116,6 +117,7 @@ contract MultiCurrencyStakingProtocol is Ownable {
             supportedCurrencies[i] = Currency({
                 isoCode: currencyData.isoCode,
                 tokenSymbol: currencyData.tokenSymbol,
+                tokenAddress: currencyData.tokenAddress,
                 totalStaked: currencyData.totalStaked,
                 transactionFee: currencyData.transactionFee,
                 rewardsPool: currencyData.rewardsPool,
