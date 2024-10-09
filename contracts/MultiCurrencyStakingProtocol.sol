@@ -254,4 +254,24 @@ contract MultiCurrencyStakingProtocol is Ownable {
 
         return (userStake * totalRewardsPool) / totalStaked;
     }
+
+    function stake(IERC20 token, uint256 amount) external isSupportedToken(token) {
+        require(amount > 0, "Stake amount must be greater than zero");
+        
+        // Transfer tokens from user to contract
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        
+        // Update user's stake
+        userStakes[msg.sender][token] += amount;
+        
+        // Update total staked for the currency
+        currencies[token].totalStaked += amount;
+        
+        emit Stake(msg.sender, token, amount);
+    }
+
+    // Add this function to allow users to check their stake
+    function getUserStake(address user, IERC20 token) external view returns (uint256) {
+        return userStakes[user][token];
+    }
 }
